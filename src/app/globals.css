@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Modern scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #bcd0ee;
+  border-radius: 8px;
+  border: 2px solid #f4f6fa;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5b8def;
+}
+::-webkit-scrollbar-track {
+  background: #f4f6fa;
+  border-radius: 8px;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #5b8def #f4f6fa;
+}
