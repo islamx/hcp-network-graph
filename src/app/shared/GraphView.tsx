@@ -15,6 +15,14 @@ const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeCl
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 300, height: 300 });
 
+  // 👇 function for node label based on type
+  const getNodeLabel = (node: any) => {
+    if (node.type === "doctor") return node.name;
+    if (node.type === "publication") return node.title;
+    if (node.type === "publisher") return node.name;
+    return node.id;
+  };
+
   useEffect(() => {
     if (!containerRef.current) return;
     const handleResize = () => {
@@ -53,7 +61,8 @@ const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeCl
           ctx.font = `${14 / globalScale}px Sans-Serif`;
           ctx.textAlign = "center";
           ctx.fillStyle = "#222";
-          ctx.fillText(node.name, x, y - 14);
+          // Use the new label getter function
+          ctx.fillText(getNodeLabel(node), x, y - 14);
         }}
         onNodeClick={onNodeClick}
         onNodeHover={onNodeHover}
@@ -63,4 +72,4 @@ const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeCl
   );
 };
 
-export default GraphView; 
+export default GraphView;
