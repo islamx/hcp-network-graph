@@ -14,12 +14,19 @@ interface SidebarNavProps {
 }
 
 const SidebarNav: React.FC<SidebarNavProps> = ({ activeKey = "home" }) => (
-  <aside className="h-screen w-20 bg-white border-r border-gray-100 rounded-2xl flex flex-col items-center py-6 shadow-sm z-10 justify-between">
-    <div className="flex flex-col gap-4 mt-2">
+  <aside className="fixed left-0 top-0 h-screen w-20 bg-white border-r border-gray-100 flex flex-col items-center py-6 shadow z-20 justify-between">
+    {/* Logo at the top */}
+    <div className="mb-8 mt-2 flex flex-col items-center">
+      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-2">
+        <span className="text-blue-600 font-bold text-2xl">PS</span>
+      </div>
+    </div>
+    {/* Navigation icons */}
+    <div className="flex flex-col gap-2 flex-1 items-center justify-center">
       {navIcons.map(({ icon: Icon, key }) => (
         <div
           key={key}
-          className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors duration-150 mb-1 cursor-pointer
+          className={`flex items-center justify-center w-12 h-12 rounded-xl transition-colors duration-150 cursor-pointer
             ${activeKey === key ? "bg-blue-600 text-white shadow" : "text-gray-400 hover:text-blue-600 hover:bg-blue-50"}`}
         >
           <Icon className="w-6 h-6" />
@@ -27,9 +34,9 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeKey = "home" }) => (
       ))}
     </div>
     {/* User avatar button at the bottom */}
-    <div className="mb-2">
-      <button className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shadow border border-gray-200 hover:border-blue-400 transition">
-        <img src="https://i.pravatar.cc/40?u=sidebar-user" alt="User" className="w-8 h-8 rounded-full object-cover" />
+    <div className="mb-2 flex flex-col items-center">
+      <button className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center shadow border-2 border-gray-200 hover:border-blue-400 transition">
+        <img src="https://i.pravatar.cc/40?u=sidebar-user" alt="User" className="w-9 h-9 rounded-full object-cover" />
       </button>
     </div>
   </aside>

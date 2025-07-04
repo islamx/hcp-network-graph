@@ -127,7 +127,7 @@ export default function Home() {
   const sidebarNode = selectedNode ? selectedNode : hoveredNode;
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full h-screen flex flex-col">
       {/* Topbar always at the top */}
       <Topbar 
         searchValue={searchValue}
@@ -136,18 +136,16 @@ export default function Home() {
         onSearchKeyDown={handleInputKeyDown}
         error={error}
       />
+      {/* Sidebar Navigation (fixed, outside flex) */}
+      <SidebarNav />
       {/* Main Content */}
-      <div className="flex-1 w-full mx-auto flex flex-row gap-8 overflow-x-hidden max-w-full min-h-0 py-4">
-        {/* Sidebar Navigation */}
-        <div className="hidden lg:block">
-          <SidebarNav />
-        </div>
+      <div className="flex-1 flex flex-row overflow-x-hidden min-h-0 py-4 ml-20">
         {/* Sidebar */}
         <div className="flex-shrink-0 w-full max-w-full lg:w-[360px] mb-6 lg:mb-0 overflow-y-auto h-full min-h-0 min-w-0">
           <DoctorSidebar selectedNode={selectedNode ? selectedNode : hoveredNode} />
         </div>
         {/* Graph Area */}
-        <div className="flex-1 bg-white rounded-2xl shadow flex flex-col max-w-full w-full overflow-y-auto h-full min-h-0 min-w-0 mr-4 relative">
+        <div className="flex-1 bg-white rounded-2xl shadow flex flex-col w-full overflow-y-auto h-full min-h-0 min-w-0 relative mr-8">
           {/* Filter bar */}
           <div className="flex items-center gap-4 px-6 py-3 bg-white rounded-t-2xl border-b border-gray-100 shadow-sm mb-2 sticky top-0 z-10">
             <button className="bg-blue-50 text-blue-600 font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-blue-100 transition">Filter</button>
