@@ -8,6 +8,7 @@ import DoctorSidebar from "./shared/DoctorSidebar";
 import SidebarNav from "./shared/SidebarNav";
 import EdgeTooltip from "./shared/EdgeTooltip";
 import EdgeDetailsModal from "./shared/EdgeDetailsModal";
+import Topbar from "./shared/Topbar";
 
 // Dynamically import ForceGraph2D from the dedicated 2D package
 const ForceGraph2D = dynamic(
@@ -26,7 +27,7 @@ export default function Home() {
   const graphViewRef = useRef<any>(null);
 
   // Helper: get node by id
-  const getNodeById = (id: string) => mockData.nodes.find(n => n.id === id);
+  const getNodeById = (id: string) => mockData.nodes.find(n => n.id === id) || null;
 
   // Helper: get shared publications between two doctors
   const getSharedPublications = (sourceId: string, targetId: string) => {
@@ -67,6 +68,31 @@ export default function Home() {
     setSelectedLink({ ...link, source, target, sharedPubs, workDetails });
   };
 
+  // Enhanced node click handler
+  const handleNodeClick = (node: any) => {
+    console.log('Node clicked:', node);
+    setSelectedNode(node);
+    setHoveredNode(null); // Clear hover when clicking
+    
+    // Add visual feedback
+    if (node && node.id) {
+      // Flash the node briefly
+      setTimeout(() => {
+        // This will trigger a re-render with the selected node highlighted
+      }, 100);
+    }
+  };
+
+  // Enhanced node hover handler
+  const handleNodeHover = (node: any | null) => {
+    if (!selectedNode) {
+      setHoveredNode(node);
+    }
+    if (selectedNode && node === null) {
+      setHoveredNode(null);
+    }
+  };
+
   const handleSearch = () => {
     // Normalize: remove 'dr.', trim, lowercase, and allow partial match
     const normalize = (str: string) =>
@@ -75,11 +101,11 @@ export default function Home() {
     const foundNode = mockData.nodes.find(
       (node) => normalize(node.name).includes(searchNorm)
     );
-    if (foundNode) {
+    if (foundNode && foundNode.id) {
       setCenterNodeId(foundNode.id);
       setError("");
       setTimeout(() => {
-        graphViewRef.current?.centerAndZoomOnNode(foundNode.id);
+        graphViewRef.current?.centerAndZoomOnNode(foundNode.id!);
       }, 100);
     } else {
       setError("Doctor not found!");
@@ -92,8 +118,8 @@ export default function Home() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(e.target.value);
+  const handleInputChange = (value: string) => {
+    setSearchValue(value);
     if (error) setError("");
   };
 
@@ -102,22 +128,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full h-screen flex flex-col">
-      {/* Top Bar */}
-      <div className="w-full px-8 py-4 bg-white shadow sticky top-0 z-20 flex justify-center">
-        <div className="w-full max-w-2xl mx-auto flex items-center gap-3">
-          <SearchInput
-            value={searchValue}
-            onChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
-            onSearch={handleSearch}
-            placeholder="Search doctor by name..."
-          />
-        </div>
-      </div>
-      {/* Error message under search */}
-      {error && (
-        <div className="text-red-600 text-center font-medium animate-pulse mt-2">{error}</div>
-      )}
+      {/* Topbar always at the top */}
+      <Topbar 
+        searchValue={searchValue}
+        onSearchChange={handleInputChange}
+        onSearch={handleSearch}
+        onSearchKeyDown={handleInputKeyDown}
+        error={error}
+      />
       {/* Main Content */}
       <div className="flex-1 w-full mx-auto flex flex-row gap-8 overflow-x-hidden max-w-full min-h-0 py-4">
         {/* Sidebar Navigation */}
@@ -129,28 +147,39 @@ export default function Home() {
           <DoctorSidebar selectedNode={selectedNode ? selectedNode : hoveredNode} />
         </div>
         {/* Graph Area */}
-        <div className="flex-1 bg-white rounded-2xl shadow flex items-center justify-center max-w-full w-full overflow-y-auto h-full min-h-0 min-w-0 mr-4">
-          <GraphView
-            ref={graphViewRef}
-            graphData={mockData}
-            centerNodeId={centerNodeId}
-            onNodeClick={node => setSelectedNode(node)}
-            onNodeHover={node => {
-              if (!selectedNode) setHoveredNode(node);
-              if (selectedNode && node === null) setHoveredNode(null);
-            }}
-            onLinkHover={handleLinkHover}
-            onLinkClick={handleLinkClick}
-          />
-          {hoveredLink && (
-            <div className="absolute left-1/2 top-4 transform -translate-x-1/2 z-50 pointer-events-none animate-fade-in">
-              <EdgeTooltip link={hoveredLink} />
-            </div>
-          )}
-          {/* Modal for link details */}
-          {selectedLink && (
-            <EdgeDetailsModal link={selectedLink} onClose={() => setSelectedLink(null)} />
-          )}
+        <div className="flex-1 bg-white rounded-2xl shadow flex flex-col max-w-full w-full overflow-y-auto h-full min-h-0 min-w-0 mr-4 relative">
+          {/* Filter bar */}
+          <div className="flex items-center gap-4 px-6 py-3 bg-white rounded-t-2xl border-b border-gray-100 shadow-sm mb-2 sticky top-0 z-10">
+            <button className="bg-blue-50 text-blue-600 font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-blue-100 transition">Filter</button>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-xs text-gray-500">Show Connections</span>
+              <input type="checkbox" checked={true} readOnly className="accent-blue-600 w-4 h-4 rounded" />
+            </label>
+            {/* Placeholder for more filters */}
+            <div className="flex-1" />
+            <button className="bg-gray-50 text-gray-500 font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-gray-100 transition">More Filters</button>
+          </div>
+          {/* Graph itself */}
+          <div className="flex-1 relative min-h-0">
+            <GraphView
+              ref={graphViewRef}
+              graphData={mockData}
+              centerNodeId={centerNodeId}
+              selectedNode={selectedNode}
+              onNodeClick={handleNodeClick}
+              onNodeHover={handleNodeHover}
+              onLinkHover={handleLinkHover}
+            />
+            {hoveredLink && (
+              <div className="absolute left-1/2 top-4 transform -translate-x-1/2 z-50 pointer-events-none animate-fade-in">
+                <EdgeTooltip link={hoveredLink} />
+              </div>
+            )}
+            {/* Modal for link details */}
+            {selectedLink && (
+              <EdgeDetailsModal link={selectedLink} onClose={() => setSelectedLink(null)} />
+            )}
+          </div>
         </div>
       </div>
     </div>
