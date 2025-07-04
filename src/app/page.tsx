@@ -136,16 +136,18 @@ export default function Home() {
         onSearchKeyDown={handleInputKeyDown}
         error={error}
       />
-      {/* Sidebar Navigation (fixed, outside flex) */}
-      <SidebarNav />
+      {/* Sidebar Navigation (fixed, only on large screens) */}
+      <div className="hidden lg:block">
+        <SidebarNav />
+      </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-row overflow-x-hidden min-h-0 py-4 ml-20">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-x-hidden min-h-0 py-4 ml-0 lg:ml-20">
         {/* Sidebar */}
-        <div className="flex-shrink-0 w-full max-w-full lg:w-[360px] mb-6 lg:mb-0 overflow-y-auto h-full min-h-0 min-w-0">
+        <div className="flex-shrink-0 w-full max-w-full lg:w-[360px] mb-6 lg:mb-0 overflow-y-auto h-full min-h-0 min-w-0 lg:mr-8">
           <DoctorSidebar selectedNode={selectedNode ? selectedNode : hoveredNode} />
         </div>
         {/* Graph Area */}
-        <div className="flex-1 bg-white rounded-2xl shadow flex flex-col w-full overflow-y-auto h-full min-h-0 min-w-0 relative mr-8">
+        <div className="flex-1 bg-white rounded-none lg:rounded-2xl shadow flex flex-col w-full overflow-y-auto h-[300px] sm:h-full min-h-[300px] min-h-0 min-w-0 relative mr-0 lg:mr-8">
           {/* Filter bar */}
           <div className="flex items-center gap-4 px-6 py-3 bg-white rounded-t-2xl border-b border-gray-100 shadow-sm mb-2 sticky top-0 z-10">
             <button className="bg-blue-50 text-blue-600 font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-blue-100 transition">Filter</button>
