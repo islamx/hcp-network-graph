@@ -64,6 +64,99 @@ const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeCl
           // Use the new label getter function
           ctx.fillText(getNodeLabel(node), x, y - 14);
         }}
+        linkCanvasObject={(link, ctx, globalScale) => {
+          // Draw the default link with color and width
+          const start = link.source;
+          const end = link.target;
+          if (
+            !start ||
+            !end ||
+            typeof start !== 'object' ||
+            typeof end !== 'object' ||
+            start === null ||
+            end === null ||
+            typeof start.x !== 'number' ||
+            typeof start.y !== 'number' ||
+            typeof end.x !== 'number' ||
+            typeof end.y !== 'number'
+          ) {
+            return;
+          }
+          const startX = start.x;
+          const startY = start.y;
+          const endX = end.x;
+          const endY = end.y;
+          // Pick color based on relation
+          let color = "#e5e7eb";
+          switch (link.relation) {
+            case "Co-authored paper":
+              color = "#a78bfa"; break;
+            case "Worked together":
+              color = "#34d399"; break;
+            case "Same hospital":
+              color = "#60a5fa"; break;
+            case "Mentor":
+              color = "#fbbf24"; break;
+            case "Author":
+              color = "#6366f1"; break;
+            case "Published in":
+              color = "#cbd5e1"; break;
+            default:
+              color = "#e5e7eb";
+          }
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = .5;
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+          ctx.restore();
+          // Draw the label
+          if (link.relation) {
+            const label = String(link.relation);
+            const midX = (startX + endX) / 2;
+            const midY = (startY + endY) / 2;
+            let angle = Math.atan2(endY - startY, endX - startX);
+            // Ensure text is always upright
+            if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+              angle += Math.PI;
+            }
+            ctx.save();
+            ctx.translate(midX, midY);
+            ctx.rotate(angle);
+            ctx.font = `${12 / globalScale}px Sans-Serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            // Draw background for readability
+            const textWidth = ctx.measureText(label).width;
+            ctx.fillStyle = "rgba(255,255,255,0.85)";
+            ctx.fillRect(-textWidth / 2 - 2, -8 / globalScale, textWidth + 4, 16 / globalScale);
+            // Draw text
+            ctx.fillStyle = "#555";
+            ctx.fillText(label, 0, 0);
+            ctx.restore();
+          }
+        }}
+        linkColor={link => {
+          switch (link.relation) {
+            case "Co-authored paper":
+              return "#a78bfa"; // purple
+            case "Worked together":
+              return "#34d399"; // green
+            case "Same hospital":
+              return "#60a5fa"; // blue
+            case "Mentor":
+              return "#fbbf24"; // orange
+            case "Author":
+              return "#6366f1"; // indigo
+            case "Published in":
+              return "#cbd5e1"; // soft gray
+            default:
+              return "#e5e7eb"; // lighter gray
+          }
+        }}
+        linkWidth={1.5}
         onNodeClick={onNodeClick}
         onNodeHover={onNodeHover}
         onLinkHover={onLinkHover}
