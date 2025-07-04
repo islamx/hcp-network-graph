@@ -6,6 +6,8 @@ import SearchInput from "./shared/SearchInput";
 import GraphView from "./shared/GraphView";
 import DoctorSidebar from "./shared/DoctorSidebar";
 import SidebarNav from "./shared/SidebarNav";
+import EdgeTooltip from "./shared/EdgeTooltip";
+import EdgeDetailsModal from "./shared/EdgeDetailsModal";
 
 // Dynamically import ForceGraph2D from the dedicated 2D package
 const ForceGraph2D = dynamic(
@@ -20,7 +22,50 @@ export default function Home() {
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any | null>(null);
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
+  const [selectedLink, setSelectedLink] = useState<any | null>(null);
   const graphViewRef = useRef<any>(null);
+
+  // Helper: get node by id
+  const getNodeById = (id: string) => mockData.nodes.find(n => n.id === id);
+
+  // Helper: get shared publications between two doctors
+  const getSharedPublications = (sourceId: string, targetId: string) => {
+    return mockData.nodes.filter(n => n.type === 'publication' && n.authors && n.authors.includes(sourceId) && n.authors.includes(targetId));
+  };
+
+  // Helper: get work overlap (if any)
+  const getWorkDetails = (source: any, target: any) => {
+    if (source && target && source.work && target.work && source.work === target.work) {
+      return source.work;
+    }
+    return null;
+  };
+
+  // Enhanced hover handler
+  const handleLinkHover = (link: any | null) => {
+    if (!link) {
+      setHoveredLink(null);
+      return;
+    }
+    const source = typeof link.source === 'object' ? link.source : getNodeById(link.source);
+    const target = typeof link.target === 'object' ? link.target : getNodeById(link.target);
+    const sharedPubs = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getSharedPublications(source.id, target.id) : [];
+    const workDetails = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getWorkDetails(source, target) : null;
+    setHoveredLink({ ...link, source, target, sharedPubs, workDetails });
+  };
+
+  // Enhanced click handler
+  const handleLinkClick = (link: any | null) => {
+    if (!link) {
+      setSelectedLink(null);
+      return;
+    }
+    const source = typeof link.source === 'object' ? link.source : getNodeById(link.source);
+    const target = typeof link.target === 'object' ? link.target : getNodeById(link.target);
+    const sharedPubs = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getSharedPublications(source.id, target.id) : [];
+    const workDetails = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getWorkDetails(source, target) : null;
+    setSelectedLink({ ...link, source, target, sharedPubs, workDetails });
+  };
 
   const handleSearch = () => {
     // Normalize: remove 'dr.', trim, lowercase, and allow partial match
@@ -94,12 +139,17 @@ export default function Home() {
               if (!selectedNode) setHoveredNode(node);
               if (selectedNode && node === null) setHoveredNode(null);
             }}
-            onLinkHover={setHoveredLink}
+            onLinkHover={handleLinkHover}
+            onLinkClick={handleLinkClick}
           />
           {hoveredLink && (
-            <div className="absolute left-1/2 top-4 transform -translate-x-1/2 bg-black text-white text-xs rounded px-3 py-1 shadow-lg z-50 pointer-events-none animate-fade-in">
-              {hoveredLink.relation}
+            <div className="absolute left-1/2 top-4 transform -translate-x-1/2 z-50 pointer-events-none animate-fade-in">
+              <EdgeTooltip link={hoveredLink} />
             </div>
+          )}
+          {/* Modal for link details */}
+          {selectedLink && (
+            <EdgeDetailsModal link={selectedLink} onClose={() => setSelectedLink(null)} />
           )}
         </div>
       </div>
