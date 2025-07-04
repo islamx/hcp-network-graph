@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { mockData } from "../data/mockGhraph";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import SearchInput from "./shared/SearchInput";
 import GraphView from "./shared/GraphView";
 import DoctorSidebar from "./shared/DoctorSidebar";
@@ -20,6 +20,7 @@ export default function Home() {
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any | null>(null);
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
+  const graphViewRef = useRef<any>(null);
 
   const handleSearch = () => {
     // Normalize: remove 'dr.', trim, lowercase, and allow partial match
@@ -32,6 +33,9 @@ export default function Home() {
     if (foundNode) {
       setCenterNodeId(foundNode.id);
       setError("");
+      setTimeout(() => {
+        graphViewRef.current?.centerAndZoomOnNode(foundNode.id);
+      }, 100);
     } else {
       setError("Doctor not found!");
     }
@@ -82,6 +86,7 @@ export default function Home() {
         {/* Graph Area */}
         <div className="flex-1 bg-white rounded-2xl shadow flex items-center justify-center max-w-full w-full overflow-y-auto h-full min-h-0 min-w-0 mr-4">
           <GraphView
+            ref={graphViewRef}
             graphData={mockData}
             centerNodeId={centerNodeId}
             onNodeClick={node => setSelectedNode(node)}

@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic";
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
@@ -11,9 +11,21 @@ interface GraphViewProps {
   onLinkHover?: (link: any | null) => void;
 }
 
-const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeClick, onNodeHover, onLinkHover }) => {
+const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, onNodeClick, onNodeHover, onLinkHover }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 300, height: 300 });
+  const fgRef = useRef<any>(null);
+
+  useImperativeHandle(ref, () => ({
+    centerAndZoomOnNode: (nodeId: string) => {
+      if (!fgRef.current) return;
+      const node = graphData.nodes.find((n: any) => n.id === nodeId);
+      if (node && typeof node.x === 'number' && typeof node.y === 'number') {
+        fgRef.current.centerAt(node.x, node.y, 1000);
+        fgRef.current.zoom(3, 1000);
+      }
+    }
+  }));
 
   // 👇 function for node label based on type
   const getNodeLabel = (node: any) => {
@@ -42,6 +54,7 @@ const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeCl
   return (
     <div className="w-full h-full overflow-hidden" ref={containerRef}>
       <ForceGraph2D
+        ref={fgRef}
         width={dimensions.width}
         height={dimensions.height}
         graphData={graphData}
@@ -163,6 +176,6 @@ const GraphView: React.FC<GraphViewProps> = ({ graphData, centerNodeId, onNodeCl
       />
     </div>
   );
-};
+});
 
 export default GraphView;
