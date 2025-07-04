@@ -1,20 +1,12 @@
 "use client";
-import dynamic from "next/dynamic";
 import { mockData } from "../data/mockGhraph";
 import React, { useState, useRef } from "react";
-import SearchInput from "./shared/SearchInput";
 import GraphView from "./shared/GraphView";
 import DoctorSidebar from "./shared/DoctorSidebar";
 import SidebarNav from "./shared/SidebarNav";
 import EdgeTooltip from "./shared/EdgeTooltip";
 import EdgeDetailsModal from "./shared/EdgeDetailsModal";
 import Topbar from "./shared/Topbar";
-
-// Dynamically import ForceGraph2D from the dedicated 2D package
-const ForceGraph2D = dynamic(
-  () => import("react-force-graph-2d"),
-  { ssr: false }
-);
 
 export default function Home() {
   const [searchValue, setSearchValue] = useState("");
