@@ -9,22 +9,30 @@ A modern healthcare professional network visualization app.
 ---
 
 ## Why Next.js & Tailwind CSS?
-I chose Next.js for its production-grade React features and optimized performance, and Tailwind CSS for rapid, pixel-perfect UI. This ensures a scalable, responsive, and maintainable solution.
+
+Next.js provides production-grade React features and optimized performance.  
+Tailwind CSS enables rapid, pixel-perfect UI.  
+Together, they ensure a scalable, responsive, and maintainable solution.
 
 ---
 
 ## Features
-- Interactive force-directed graph for HCPs, publications, and publishers.
-- Modern sidebar profile card with doctor details and stats.
-- Responsive, pixel-perfect UI matching the provided Figma design.
-- Filter, search, and focus the graph by name.
-- Custom node rendering and smooth animations.
-- Built-in filter bar and toggle switches for connections.
+
+- Interactive force-directed graph for HCPs, publications, and publishers
+- Modern sidebar profile card with doctor details and stats
+- Responsive, pixel-perfect UI matching the provided Figma design
+- Filter, search, and focus the graph by name
+- Custom node rendering and smooth animations
+- Built-in filter bar and toggle switches for connections
 
 ---
 
 ## Tech Stack
-**Next.js**, **React**, **Tailwind CSS**, **react-force-graph**  
+
+- **Next.js**
+- **React**
+- **Tailwind CSS**
+- **react-force-graph**  
 Data: Local mock file (`/data/mockGraph.js`)
 
 ---
@@ -37,5 +45,9 @@ Data: Local mock file (`/data/mockGraph.js`)
 
 ---
 
-**Author:** [Islam Abdelzaher](https://islamz.me)  
-**Live:** [hcp-graph.vercel.app](https://hcp-graph.vercel.app)
+## Author & Contact
+
+- **Islam Abdelzaher**  
+  [Portfolio](https://islamz.me)  
+  [LinkedIn](https://www.linkedin.com/in/islamabdelzaher/)  
+  Email: islam.abdelzaher@gmail.com  
