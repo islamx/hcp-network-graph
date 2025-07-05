@@ -31,10 +31,10 @@ export function drawGraphNode(
   // Draw avatar/icon
   drawNodeAvatar(node, ctx, x, y, r);
 
-  // Draw label
+  // Draw label with 10% smaller font size
   if (globalScale > 0.5) {
     ctx.save();
-    ctx.font = `${Math.max(10, 12 / globalScale)}px Inter, sans-serif`;
+    ctx.font = `${Math.max(9, 10.8 / globalScale)}px Inter, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.fillStyle = "#374151";

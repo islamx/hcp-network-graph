@@ -50,28 +50,31 @@ export default function Home() {
     setHoveredLink({ ...link, source, target, sharedPubs, workDetails });
   };
 
-  // Enhanced node click handler
+  // Enhanced node click handler with improved smoothness
   const handleNodeClick = (node: { [key: string]: unknown }) => {
     console.log('Node clicked:', node);
-    setSelectedNode(node);
-    setHoveredNode(null); // Clear hover when clicking
     
-    // Add visual feedback
-    if (node && node.id) {
-      // Flash the node briefly
-      setTimeout(() => {
-        // This will trigger a re-render with the selected node highlighted
-      }, 100);
+    // Only update if it's a different node to prevent unnecessary re-renders
+    if (selectedNode?.id !== node.id) {
+      setSelectedNode(node);
     }
+    
+    // Keep hover state for smooth interaction
+    // Don't clear hoveredNode immediately to prevent flickering
   };
 
-  // Enhanced node hover handler
+  // Enhanced node hover handler with improved smoothness
   const handleNodeHover = (node: { [key: string]: unknown } | null) => {
+    // Only update hover state if no node is selected, or if we're hovering over a different node
     if (!selectedNode) {
-      setHoveredNode(node);
-    }
-    if (selectedNode && node === null) {
-      setHoveredNode(null);
+      if (hoveredNode?.id !== node?.id) {
+        setHoveredNode(node);
+      }
+    } else {
+      // If a node is selected, only clear hover when moving away from the selected node
+      if (node === null || (selectedNode && node.id !== selectedNode.id)) {
+        setHoveredNode(null);
+      }
     }
   };
 

@@ -7,6 +7,9 @@ import GraphZoomControls from './GraphZoomControls';
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
+// Avatar cache to prevent flickering
+const avatarCache = new Map<string, HTMLImageElement>();
+
 interface GraphViewProps {
   graphData: { nodes: { [key: string]: unknown }[]; links: { [key: string]: unknown }[] };
   centerNodeId: string | null;
@@ -76,27 +79,40 @@ const GraphView = forwardRef<GraphViewRef, GraphViewProps>(({ graphData, centerN
     return "#ffffff";
   };
 
-  // Node avatar or icon
+  // Node avatar or icon with caching to prevent flickering
   const drawNodeAvatar = (node: { [key: string]: unknown }, ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => {
     if (node.type === "doctor") {
-      const img = new window.Image();
-      img.src = `https://i.pravatar.cc/60?u=doctor-${node.id}`;
-      img.onload = () => {
+      const nodeId = node.id as string;
+      const cacheKey = `doctor-${nodeId}`;
+      
+      if (avatarCache.has(cacheKey)) {
+        // Use cached image
+        const cachedImg = avatarCache.get(cacheKey)!;
+        if (cachedImg.complete) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, 2 * Math.PI);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(cachedImg, x - r, y - r, r * 2, r * 2);
+          ctx.restore();
+        }
+      } else {
+        // Load and cache new image
+        const img = new window.Image();
+        img.src = `https://i.pravatar.cc/60?u=doctor-${nodeId}`;
+        img.onload = () => {
+          avatarCache.set(cacheKey, img);
+          // The image will be drawn on next render cycle
+        };
+        // fallback circle while loading
         ctx.save();
         ctx.beginPath();
         ctx.arc(x, y, r, 0, 2 * Math.PI);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+        ctx.fillStyle = "#dbeafe";
+        ctx.fill();
         ctx.restore();
-      };
-      // fallback circle while loading
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = "#dbeafe";
-      ctx.fill();
-      ctx.restore();
+      }
     } else if (node.type === "publication") {
       ctx.save();
       ctx.beginPath();
