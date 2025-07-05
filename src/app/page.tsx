@@ -17,6 +17,8 @@ export default function Home() {
   const [hoveredLink, setHoveredLink] = useState<any | null>(null);
   const [selectedLink, setSelectedLink] = useState<any | null>(null);
   const graphViewRef = useRef<any>(null);
+  const [showConnections, setShowConnections] = useState(true);
+  const [showMyConnections, setShowMyConnections] = useState(false);
 
   // Helper: get node by id
   const getNodeById = (id: string) => mockData.nodes.find(n => n.id === id) || null;
@@ -127,6 +129,10 @@ export default function Home() {
         onSearch={handleSearch}
         onSearchKeyDown={handleInputKeyDown}
         error={error}
+        showConnections={showConnections}
+        setShowConnections={setShowConnections}
+        showMyConnections={showMyConnections}
+        setShowMyConnections={setShowMyConnections}
       />
       {/* Sidebar Navigation (fixed, only on large screens) */}
       <div className="hidden lg:block">
@@ -135,22 +141,11 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-x-hidden min-h-0 py-4 ml-0 lg:ml-20">
         {/* Sidebar */}
-        <div className="flex-shrink-0 w-full max-w-full lg:w-[360px] mb-6 lg:mb-0 overflow-y-auto h-full min-h-0 min-w-0 lg:mr-8">
+        <div className="flex-shrink-0 w-full max-w-full lg:w-[360px] mb-6 lg:mb-0 overflow-y-auto h-full min-h-0 min-w-0 lg:mr-8 lg:ml-8">
           <DoctorSidebar selectedNode={selectedNode ? selectedNode : hoveredNode} />
         </div>
         {/* Graph Area */}
         <div className="flex-1 bg-white rounded-none lg:rounded-2xl shadow flex flex-col w-full overflow-y-auto h-[300px] sm:h-full min-h-[300px] min-h-0 min-w-0 relative mr-0 lg:mr-8">
-          {/* Filter bar */}
-          <div className="flex items-center gap-4 px-6 py-3 bg-white rounded-t-2xl border-b border-gray-100 shadow-sm mb-2 sticky top-0 z-10">
-            <button className="bg-blue-50 text-blue-600 font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-blue-100 transition">Filter</button>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <span className="text-xs text-gray-500">Show Connections</span>
-              <input type="checkbox" checked={true} readOnly className="accent-blue-600 w-4 h-4 rounded" />
-            </label>
-            {/* Placeholder for more filters */}
-            <div className="flex-1" />
-            <button className="bg-gray-50 text-gray-500 font-semibold px-4 py-2 rounded-full shadow-sm hover:bg-gray-100 transition">More Filters</button>
-          </div>
           {/* Graph itself */}
           <div className="flex-1 relative min-h-0">
             <GraphView
@@ -161,6 +156,8 @@ export default function Home() {
               onNodeClick={handleNodeClick}
               onNodeHover={handleNodeHover}
               onLinkHover={handleLinkHover}
+              showConnections={showConnections}
+              showMyConnections={showMyConnections}
             />
             {hoveredLink && (
               <div className="absolute left-1/2 top-4 transform -translate-x-1/2 z-50 pointer-events-none animate-fade-in">

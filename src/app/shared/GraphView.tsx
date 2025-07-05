@@ -11,9 +11,11 @@ interface GraphViewProps {
   onNodeHover: (node: any | null) => void;
   onLinkHover?: (link: any | null) => void;
   selectedNode?: any | null;
+  showConnections: boolean;
+  showMyConnections: boolean;
 }
 
-const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, onNodeClick, onNodeHover, onLinkHover, selectedNode }, ref) => {
+const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, onNodeClick, onNodeHover, onLinkHover, selectedNode, showConnections, showMyConnections }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 300, height: 300 });
   const fgRef = useRef<any>(null);
@@ -128,68 +130,90 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
   const handleZoomOut = () => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400);
   const handleFit = () => fgRef.current?.zoomToFit(400, 40);
 
+  // Filter links/nodes based on toggles
+  let filteredGraphData = graphData;
+  if (!showConnections) {
+    filteredGraphData = { ...filteredGraphData, links: [] };
+  } else if (showMyConnections && centerNodeId) {
+    // Only show links/nodes related to centerNodeId
+    const relatedLinks = graphData.links.filter((l: any) => l.source === centerNodeId || l.target === centerNodeId);
+    const relatedNodeIds = new Set([centerNodeId, ...relatedLinks.map((l: any) => l.source === centerNodeId ? l.target : l.source)]);
+    const relatedNodes = graphData.nodes.filter((n: any) => relatedNodeIds.has(n.id));
+    filteredGraphData = { nodes: relatedNodes, links: relatedLinks };
+  }
+
+  // Node repulsion (charge) - increase to reduce overlap
+  const nodeCount = graphData.nodes.length;
+  const repulsion = nodeCount > 30 ? -600 : -400;
+
+  // Set d3 charge force via ref
+  useEffect(() => {
+    if (fgRef.current) {
+      fgRef.current.d3Force('charge').strength(repulsion);
+    }
+  }, [repulsion, filteredGraphData]);
+
   return (
-    <div className="w-full h-full overflow-hidden relative cursor-pointer" ref={containerRef} style={{ background: "linear-gradient(135deg, #f8fafc 60%, #e0e7ef 100%)" }}>
+    <div className="w-full h-full overflow-hidden relative cursor-pointer" ref={containerRef} style={{ background: "linear-gradient(135deg, #fff 60%, #f3f6fa 100%)" }}>
+      {/* Filter bar overlay */}
+      <div className="absolute top-6 left-6 z-30 flex items-center gap-3 bg-white rounded-full shadow-xl border border-gray-100 px-6 py-3 min-w-[240px]" style={{fontFamily: 'Inter, Geist, sans-serif'}}>
+        <button className="bg-blue-50 text-blue-600 font-semibold px-4 py-1.5 rounded-full shadow-sm hover:bg-blue-100 transition text-xs">Filter</button>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <span className="text-xs text-gray-500">Show Connections</span>
+          <input type="checkbox" checked={true} readOnly className="accent-blue-600 w-4 h-4 rounded" />
+        </label>
+        <button className="bg-gray-50 text-gray-500 font-semibold px-4 py-1.5 rounded-full shadow-sm hover:bg-gray-100 transition text-xs">More</button>
+      </div>
       <ForceGraph2D
         ref={fgRef}
         width={dimensions.width}
         height={dimensions.height}
-        graphData={graphData}
+        graphData={filteredGraphData}
         nodeCanvasObject={(node, ctx, globalScale) => {
           const x = typeof node.x === "number" ? node.x : 0;
           const y = typeof node.y === "number" ? node.y : 0;
-          // Adjust radius based on zoom level to prevent overlap
-          const baseRadius = 16;
-          const minRadius = 8;
-          const maxRadius = 24;
+          // Central node larger
+          const isCenter = node.id === centerNodeId;
+          // Node size adapts to zoom and node count
+          const baseRadius = isCenter ? 32 : (nodeCount > 30 ? 12 : 16);
+          const minRadius = isCenter ? 18 : (nodeCount > 30 ? 7 : 8);
+          const maxRadius = isCenter ? 40 : (nodeCount > 30 ? 18 : 24);
           const r = Math.max(minRadius, Math.min(maxRadius, baseRadius / globalScale));
           
-          // Background glow for searched node
-          if (node.id === centerNodeId) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x, y, r + 8, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(220, 38, 38, 0.1)";
-            ctx.fill();
-            ctx.restore();
-          }
-          
-          // Hover effect - add subtle glow
-          if (node === hoveredNode) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x, y, r + 4, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
-            ctx.fill();
-            ctx.restore();
-          }
-          
-          // Selected node effect
-          if (node === selectedNode) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x, y, r + 6, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(34, 197, 94, 0.1)";
-            ctx.fill();
-            ctx.restore();
-          }
+          // Outer semi-transparent circle (glow)
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(x, y, r + (isCenter ? 16 : 8), 0, 2 * Math.PI);
+          ctx.fillStyle = isCenter ? 'rgba(56,189,248,0.18)' : getNodeBorderColor(node).replace(')', ', 0.12)').replace('rgb', 'rgba');
+          ctx.filter = isCenter ? 'blur(2px)' : 'none';
+          ctx.fill();
+          ctx.restore();
           
           // Shadow
           ctx.save();
           ctx.beginPath();
           ctx.arc(x, y, r + 2, 0, 2 * Math.PI);
-          ctx.shadowColor = "#cbd5e1";
-          ctx.shadowBlur = 10;
+          ctx.shadowColor = isCenter ? '#38bdf8' : '#e0e7ef';
+          ctx.shadowBlur = isCenter ? 24 : 10;
           ctx.fillStyle = getNodeBackgroundColor(node);
           ctx.fill();
           ctx.restore();
           
-          // Border
+          // Border (gradient or soft shadow for doctors)
           ctx.save();
           ctx.beginPath();
           ctx.arc(x, y, r, 0, 2 * Math.PI);
-          ctx.lineWidth = node.id === centerNodeId ? 3 : 2;
-          ctx.strokeStyle = getNodeBorderColor(node);
+          ctx.lineWidth = isCenter ? 4.5 : 3;
+          if (node.type === "doctor") {
+            const grad = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
+            grad.addColorStop(0, "#60A5FA");
+            grad.addColorStop(1, "#38BDF8");
+            ctx.strokeStyle = grad;
+            ctx.shadowColor = "#60A5FA33";
+            ctx.shadowBlur = 8;
+          } else {
+            ctx.strokeStyle = getNodeBorderColor(node) + '80';
+          }
           ctx.stroke();
           ctx.restore();
           
@@ -199,10 +223,11 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
           // Label - only show at reasonable zoom levels
           if (globalScale > 0.5) {
             ctx.save();
-            ctx.font = `${11 / globalScale}px Sans-Serif`;
+            ctx.font = `300 ${11 / globalScale}px Inter, Geist, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
             ctx.fillStyle = node.id === centerNodeId ? "#dc2626" : "#222";
+            ctx.globalAlpha = 0.85;
             ctx.fillText(getNodeLabel(node), x, y + r + 6);
             ctx.restore();
           }
@@ -249,19 +274,17 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
               color = "#e5e7eb";
           }
           
-          // Adjust line width based on zoom level - ensure minimum visibility
-          const baseLineWidth = 2;
-          const minLineWidth = 1.5;
-          const maxLineWidth = 5;
-          const lineWidth = Math.max(minLineWidth, Math.min(maxLineWidth, baseLineWidth / globalScale));
-          
           // Draw glow effect for better visibility
           ctx.save();
           ctx.strokeStyle = color;
-          ctx.lineWidth = lineWidth * 2.5;
+          // Link width increases with zoom
+          const dynamicWidth = Math.max(2, Math.min(8, 3 / Math.max(globalScale, 0.5)));
+          ctx.lineWidth = dynamicWidth * 1.5;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
-          ctx.globalAlpha = 0.4;
+          ctx.globalAlpha = 0.28;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 8;
           ctx.beginPath();
           ctx.moveTo(startX, startY);
           ctx.lineTo(endX, endY);
@@ -271,7 +294,7 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
           // Draw main line
           ctx.save();
           ctx.strokeStyle = color;
-          ctx.lineWidth = lineWidth;
+          ctx.lineWidth = dynamicWidth;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
           ctx.globalAlpha = 1;
@@ -342,10 +365,16 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
         d3AlphaMin={0.001}
       />
       {/* Right-side controls */}
-      <div className="absolute top-8 right-8 flex flex-col gap-4 z-20">
-        <button onClick={handleZoomIn} className="bg-white border border-gray-200 shadow rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-50 transition"><FiZoomIn className="w-5 h-5 text-blue-600" /></button>
-        <button onClick={handleZoomOut} className="bg-white border border-gray-200 shadow rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-50 transition"><FiZoomOut className="w-5 h-5 text-blue-600" /></button>
-        <button onClick={handleFit} className="bg-white border border-gray-200 shadow rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-50 transition"><FiMaximize2 className="w-5 h-5 text-blue-600" /></button>
+      <div className="absolute top-8 right-8 flex flex-col gap-4 z-30">
+        <button onClick={handleZoomIn} className="bg-white border border-gray-100 shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition">
+          <FiZoomIn className="w-6 h-6 text-blue-600" />
+        </button>
+        <button onClick={handleZoomOut} className="bg-white border border-gray-100 shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition">
+          <FiZoomOut className="w-6 h-6 text-blue-600" />
+        </button>
+        <button onClick={handleFit} className="bg-white border border-gray-100 shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition">
+          <FiMaximize2 className="w-6 h-6 text-blue-600" />
+        </button>
       </div>
     </div>
   );
