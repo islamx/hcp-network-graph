@@ -1,7 +1,9 @@
 import dynamic from "next/dynamic";
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
-import { FiZoomIn, FiZoomOut, FiMaximize2 } from "react-icons/fi";
 import type { ForceGraphMethods } from "react-force-graph-2d";
+import { drawGraphNode } from './GraphNodeCanvas';
+import { drawGraphLink } from './GraphLinkCanvas';
+import GraphZoomControls from './GraphZoomControls';
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
@@ -123,11 +125,22 @@ const GraphView = forwardRef<GraphViewRef, GraphViewProps>(({ graphData, centerN
   };
 
   // Node label
-  const getNodeLabel = (node: { [key: string]: unknown }) => {
-    if (node.type === "doctor") return node.name;
-    if (node.type === "publication") return node.title;
-    if (node.type === "publisher") return node.name;
-    return node.id;
+  const getNodeLabel = (node: { [key: string]: unknown }): string => {
+    if (node.type === "doctor" && typeof node.name === 'string') return node.name;
+    if (node.type === "publication" && typeof node.title === 'string') return node.title;
+    if (node.type === "publisher" && typeof node.name === 'string') return node.name;
+    if (typeof node.id === 'string') return node.id;
+    return '';
+  };
+
+  const getLinkColor = (link: { [key: string]: unknown }): string => {
+    if (link.relation === 'Co-authored paper') return '#A78BFA';
+    if (link.relation === 'Worked together') return '#34D399';
+    if (link.relation === 'Same hospital') return '#60A5FA';
+    if (link.relation === 'Mentor') return '#FBBF24';
+    if (link.relation === 'Author') return '#6366F1';
+    if (link.relation === 'Published in') return '#F59E42';
+    return '#94a3b8';
   };
 
   // Update dimensions on mount and resize
@@ -204,92 +217,36 @@ const GraphView = forwardRef<GraphViewRef, GraphViewProps>(({ graphData, centerN
         width={dimensions.width}
         height={dimensions.height}
         graphData={filteredGraphData}
-        nodeCanvasObject={(node: { [key: string]: unknown }, ctx: CanvasRenderingContext2D, globalScale: number) => {
-          const x = typeof node.x === "number" ? node.x : 0;
-          const y = typeof node.y === "number" ? node.y : 0;
-          // Central node larger
-          const isCenter = node.id === centerNodeId;
-          // Node size adapts to zoom and node count
-          const nodeCount = graphData.nodes.length;
-          const baseRadius = isCenter ? 32 : (nodeCount > 30 ? 12 : 16);
-          const minRadius = isCenter ? 18 : (nodeCount > 30 ? 7 : 8);
-          const maxRadius = isCenter ? 40 : (nodeCount > 30 ? 18 : 24);
-          const r = Math.max(minRadius, Math.min(maxRadius, baseRadius / globalScale));
-          
-          // Draw node background
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x, y, r, 0, 2 * Math.PI);
-          ctx.fillStyle = getNodeBackgroundColor(node);
-          ctx.fill();
-          ctx.strokeStyle = getNodeBorderColor(node);
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.restore();
-          
-          // Draw avatar/icon
-          drawNodeAvatar(node, ctx, x, y, r);
-          
-          // Draw label
-          if (globalScale > 0.5) {
-            ctx.save();
-            ctx.font = `${Math.max(10, 12 / globalScale)}px Inter, sans-serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "top";
-            ctx.fillStyle = "#374151";
-            const label = getNodeLabel(node);
-            if (typeof label === 'string') {
-              ctx.fillText(label, x, y + r + 5);
-            }
-            ctx.restore();
-          }
-        }}
-        linkCanvasObject={(link: { [key: string]: unknown }, ctx: CanvasRenderingContext2D) => {
-          const source = link.source as { [key: string]: unknown };
-          const target = link.target as { [key: string]: unknown };
-          
-          if (typeof source.x === 'number' && typeof source.y === 'number' && 
-              typeof target.x === 'number' && typeof target.y === 'number') {
-            ctx.save();
-            ctx.beginPath();
-            ctx.moveTo(source.x, source.y);
-            ctx.lineTo(target.x, target.y);
-            ctx.strokeStyle = "#94a3b8";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.restore();
-          }
-        }}
+        nodeCanvasObject={(node, ctx, globalScale) =>
+          drawGraphNode(
+            node,
+            ctx,
+            globalScale,
+            centerNodeId,
+            getNodeLabel,
+            getNodeBorderColor,
+            getNodeBackgroundColor,
+            drawNodeAvatar
+          )
+        }
+        linkCanvasObject={(link, ctx) =>
+          drawGraphLink(
+            link,
+            ctx,
+            getLinkColor
+          )
+        }
         onNodeClick={onNodeClick}
         onNodeHover={onNodeHover}
         onLinkHover={onLinkHover}
         cooldownTicks={50}
       />
       
-      {/* Zoom controls */}
-      <div className="absolute bottom-6 right-6 z-30 flex flex-col gap-2">
-        <button
-          onClick={handleZoomIn}
-          className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
-          title="Zoom In"
-        >
-          <FiZoomIn className="w-5 h-5 text-gray-700" />
-        </button>
-        <button
-          onClick={handleZoomOut}
-          className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
-          title="Zoom Out"
-        >
-          <FiZoomOut className="w-5 h-5 text-gray-700" />
-        </button>
-        <button
-          onClick={handleFit}
-          className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
-          title="Fit to View"
-        >
-          <FiMaximize2 className="w-5 h-5 text-gray-700" />
-        </button>
-      </div>
+      <GraphZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFit={handleFit}
+      />
     </div>
   );
 });
