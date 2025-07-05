@@ -1,7 +1,7 @@
 "use client";
 import { mockData } from "../data/mockGhraph";
 import React, { useState, useRef } from "react";
-import GraphView from "./shared/GraphView";
+import GraphView, { GraphViewRef } from "./shared/GraphView";
 import DoctorSidebar from "./shared/DoctorSidebar";
 import SidebarNav from "./shared/SidebarNav";
 import EdgeTooltip from "./shared/EdgeTooltip";
@@ -12,24 +12,25 @@ export default function Home() {
   const [searchValue, setSearchValue] = useState("");
   const [centerNodeId, setCenterNodeId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [selectedNode, setSelectedNode] = useState<any | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<any | null>(null);
-  const [hoveredLink, setHoveredLink] = useState<any | null>(null);
-  const [selectedLink, setSelectedLink] = useState<any | null>(null);
-  const graphViewRef = useRef<any>(null);
+  const [selectedNode, setSelectedNode] = useState<{ [key: string]: unknown } | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<{ [key: string]: unknown } | null>(null);
+  const [hoveredLink, setHoveredLink] = useState<{ [key: string]: unknown } | null>(null);
+  const [selectedLink, setSelectedLink] = useState<{ [key: string]: unknown } | null>(null);
+  const graphViewRef = useRef<GraphViewRef | null>(null);
   const [showConnections, setShowConnections] = useState(true);
   const [showMyConnections, setShowMyConnections] = useState(false);
+  const [repulsion] = useState(-400);
 
   // Helper: get node by id
-  const getNodeById = (id: string) => mockData.nodes.find(n => n.id === id) || null;
+  const getNodeById = (id: string): { [key: string]: unknown } | null => mockData.nodes.find((n: { [key: string]: unknown }) => n.id === id) || null;
 
   // Helper: get shared publications between two doctors
-  const getSharedPublications = (sourceId: string, targetId: string) => {
-    return mockData.nodes.filter(n => n.type === 'publication' && n.authors && n.authors.includes(sourceId) && n.authors.includes(targetId));
+  const getSharedPublications = (sourceId: string, targetId: string): { [key: string]: unknown }[] => {
+    return mockData.nodes.filter((n: { [key: string]: unknown }) => n.type === 'publication' && Array.isArray(n.authors) && n.authors.includes(sourceId) && n.authors.includes(targetId));
   };
 
   // Helper: get work overlap (if any)
-  const getWorkDetails = (source: any, target: any) => {
+  const getWorkDetails = (source: { [key: string]: unknown }, target: { [key: string]: unknown }) => {
     if (source && target && source.work && target.work && source.work === target.work) {
       return source.work;
     }
@@ -37,33 +38,20 @@ export default function Home() {
   };
 
   // Enhanced hover handler
-  const handleLinkHover = (link: any | null) => {
+  const handleLinkHover = (link: { [key: string]: unknown } | null) => {
     if (!link) {
       setHoveredLink(null);
       return;
     }
-    const source = typeof link.source === 'object' ? link.source : getNodeById(link.source);
-    const target = typeof link.target === 'object' ? link.target : getNodeById(link.target);
-    const sharedPubs = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getSharedPublications(source.id, target.id) : [];
+    const source = typeof link.source === 'object' ? link.source as { [key: string]: unknown } : getNodeById(link.source as string);
+    const target = typeof link.target === 'object' ? link.target as { [key: string]: unknown } : getNodeById(link.target as string);
+    const sharedPubs = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getSharedPublications(source.id as string, target.id as string) : [];
     const workDetails = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getWorkDetails(source, target) : null;
     setHoveredLink({ ...link, source, target, sharedPubs, workDetails });
   };
 
-  // Enhanced click handler
-  const handleLinkClick = (link: any | null) => {
-    if (!link) {
-      setSelectedLink(null);
-      return;
-    }
-    const source = typeof link.source === 'object' ? link.source : getNodeById(link.source);
-    const target = typeof link.target === 'object' ? link.target : getNodeById(link.target);
-    const sharedPubs = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getSharedPublications(source.id, target.id) : [];
-    const workDetails = (source && target && source.type === 'doctor' && target.type === 'doctor') ? getWorkDetails(source, target) : null;
-    setSelectedLink({ ...link, source, target, sharedPubs, workDetails });
-  };
-
   // Enhanced node click handler
-  const handleNodeClick = (node: any) => {
+  const handleNodeClick = (node: { [key: string]: unknown }) => {
     console.log('Node clicked:', node);
     setSelectedNode(node);
     setHoveredNode(null); // Clear hover when clicking
@@ -78,7 +66,7 @@ export default function Home() {
   };
 
   // Enhanced node hover handler
-  const handleNodeHover = (node: any | null) => {
+  const handleNodeHover = (node: { [key: string]: unknown } | null) => {
     if (!selectedNode) {
       setHoveredNode(node);
     }
@@ -93,10 +81,10 @@ export default function Home() {
       str.replace(/dr\.?/i, "").replace(/\s+/g, " ").trim().toLowerCase();
     const searchNorm = normalize(searchValue);
     const foundNode = mockData.nodes.find(
-      (node) => normalize(node.name).includes(searchNorm)
+      (node) => typeof node.name === 'string' && normalize(node.name).includes(searchNorm)
     );
     if (foundNode && foundNode.id) {
-      setCenterNodeId(foundNode.id);
+      setCenterNodeId(foundNode.id!);
       setError("");
       setTimeout(() => {
         graphViewRef.current?.centerAndZoomOnNode(foundNode.id!);
@@ -116,9 +104,6 @@ export default function Home() {
     setSearchValue(value);
     if (error) setError("");
   };
-
-  // Sidebar logic: show clicked node if set, otherwise show hovered node
-  const sidebarNode = selectedNode ? selectedNode : hoveredNode;
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full h-screen flex flex-col">
@@ -152,12 +137,12 @@ export default function Home() {
               ref={graphViewRef}
               graphData={mockData}
               centerNodeId={centerNodeId}
-              selectedNode={selectedNode}
               onNodeClick={handleNodeClick}
               onNodeHover={handleNodeHover}
               onLinkHover={handleLinkHover}
               showConnections={showConnections}
               showMyConnections={showMyConnections}
+              repulsion={repulsion}
             />
             {hoveredLink && (
               <div className="absolute left-1/2 top-4 transform -translate-x-1/2 z-50 pointer-events-none animate-fade-in">

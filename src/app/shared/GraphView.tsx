@@ -1,42 +1,63 @@
 import dynamic from "next/dynamic";
 import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
 import { FiZoomIn, FiZoomOut, FiMaximize2 } from "react-icons/fi";
+import type { ForceGraphMethods } from "react-force-graph-2d";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
 interface GraphViewProps {
-  graphData: any;
+  graphData: { nodes: { [key: string]: unknown }[]; links: { [key: string]: unknown }[] };
   centerNodeId: string | null;
-  onNodeClick: (node: any) => void;
-  onNodeHover: (node: any | null) => void;
-  onLinkHover?: (link: any | null) => void;
-  selectedNode?: any | null;
+  onNodeClick: (node: { [key: string]: unknown }) => void;
+  onNodeHover: (node: { [key: string]: unknown } | null) => void;
+  onLinkHover?: (link: { [key: string]: unknown } | null) => void;
   showConnections: boolean;
   showMyConnections: boolean;
+  repulsion: number;
 }
 
-const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, onNodeClick, onNodeHover, onLinkHover, selectedNode, showConnections, showMyConnections }, ref) => {
+export interface GraphViewRef {
+  centerAndZoomOnNode: (nodeId: string) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  fitToView: () => void;
+}
+
+const GraphView = forwardRef<GraphViewRef, GraphViewProps>(({ graphData, centerNodeId, onNodeClick, onNodeHover, onLinkHover, showConnections, showMyConnections, repulsion }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 300, height: 300 });
-  const fgRef = useRef<any>(null);
-  const [hoveredNode, setHoveredNode] = useState<any | null>(null);
+  const fgRef = useRef<ForceGraphMethods | null>(null);
 
   useImperativeHandle(ref, () => ({
     centerAndZoomOnNode: (nodeId: string) => {
       if (!fgRef.current) return;
-      const node = graphData.nodes.find((n: any) => n.id === nodeId);
+      const node = graphData.nodes.find((n: { [key: string]: unknown }) => n.id === nodeId);
       if (node && typeof node.x === 'number' && typeof node.y === 'number') {
         fgRef.current.centerAt(node.x, node.y, 1000);
         fgRef.current.zoom(3, 1000);
       }
     },
-    zoomIn: () => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400),
-    zoomOut: () => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400),
-    fitToView: () => fgRef.current?.zoomToFit(400, 40),
+    zoomIn: () => {
+      if (fgRef.current) {
+        const z = fgRef.current.zoom();
+        fgRef.current.zoom((typeof z === 'number' ? z : 1) * 1.2, 400);
+      }
+    },
+    zoomOut: () => {
+      if (fgRef.current) {
+        const z = fgRef.current.zoom();
+        fgRef.current.zoom((typeof z === 'number' ? z : 1) / 1.2, 400);
+      }
+    },
+    fitToView: () => {
+      if (fgRef.current) {
+        fgRef.current.zoomToFit(400, 40);
+      }
+    },
   }));
 
   // Node border color by type
-  const getNodeBorderColor = (node: any) => {
+  const getNodeBorderColor = (node: { [key: string]: unknown }) => {
     if (node.id === centerNodeId) return "#dc2626"; // red-600 for searched node
     if (node.type === "doctor") return "#3b82f6"; // blue-500
     if (node.type === "publication") return "#a78bfa"; // purple-400
@@ -45,7 +66,7 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
   };
 
   // Node background color by type
-  const getNodeBackgroundColor = (node: any) => {
+  const getNodeBackgroundColor = (node: { [key: string]: unknown }) => {
     if (node.id === centerNodeId) return "#fef2f2"; // red-50 for searched node
     if (node.type === "doctor") return "#eff6ff"; // blue-50
     if (node.type === "publication") return "#faf5ff"; // purple-50
@@ -54,7 +75,7 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
   };
 
   // Node avatar or icon
-  const drawNodeAvatar = (node: any, ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => {
+  const drawNodeAvatar = (node: { [key: string]: unknown }, ctx: CanvasRenderingContext2D, x: number, y: number, r: number) => {
     if (node.type === "doctor") {
       const img = new window.Image();
       img.src = `https://i.pravatar.cc/60?u=doctor-${node.id}`;
@@ -102,54 +123,68 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
   };
 
   // Node label
-  const getNodeLabel = (node: any) => {
+  const getNodeLabel = (node: { [key: string]: unknown }) => {
     if (node.type === "doctor") return node.name;
     if (node.type === "publication") return node.title;
     if (node.type === "publisher") return node.name;
     return node.id;
   };
 
+  // Update dimensions on mount and resize
   useEffect(() => {
-    if (!containerRef.current) return;
-    const handleResize = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        });
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({ width: rect.width, height: rect.height });
       }
     };
-    handleResize();
-    const resizeObserver = new (window as any).ResizeObserver(handleResize);
-    resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
   // Controls handlers
-  const handleZoomIn = () => fgRef.current?.zoom(fgRef.current.zoom() * 1.2, 400);
-  const handleZoomOut = () => fgRef.current?.zoom(fgRef.current.zoom() / 1.2, 400);
-  const handleFit = () => fgRef.current?.zoomToFit(400, 40);
+  const handleZoomIn = () => {
+    if (fgRef.current) {
+      const z = fgRef.current.zoom();
+      fgRef.current.zoom((typeof z === 'number' ? z : 1) * 1.2, 400);
+    }
+  };
+  const handleZoomOut = () => {
+    if (fgRef.current) {
+      const z = fgRef.current.zoom();
+      fgRef.current.zoom((typeof z === 'number' ? z : 1) / 1.2, 400);
+    }
+  };
+  const handleFit = () => {
+    if (fgRef.current) {
+      fgRef.current.zoomToFit(400, 40);
+    }
+  };
 
   // Filter links/nodes based on toggles
-  let filteredGraphData = graphData;
-  if (!showConnections) {
-    filteredGraphData = { ...filteredGraphData, links: [] };
-  } else if (showMyConnections && centerNodeId) {
-    // Only show links/nodes related to centerNodeId
-    const relatedLinks = graphData.links.filter((l: any) => l.source === centerNodeId || l.target === centerNodeId);
-    const relatedNodeIds = new Set([centerNodeId, ...relatedLinks.map((l: any) => l.source === centerNodeId ? l.target : l.source)]);
-    const relatedNodes = graphData.nodes.filter((n: any) => relatedNodeIds.has(n.id));
-    filteredGraphData = { nodes: relatedNodes, links: relatedLinks };
-  }
-
-  // Node repulsion (charge) - increase to reduce overlap
-  const nodeCount = graphData.nodes.length;
-  const repulsion = nodeCount > 30 ? -600 : -400;
+  const filteredGraphData = {
+    nodes: graphData.nodes.filter((node: { [key: string]: unknown }) => {
+      if (!showConnections && !showMyConnections) return true;
+      if (showMyConnections) {
+        return node.type === 'doctor' && (node as { [key: string]: unknown }).isMyConnection;
+      }
+      return true;
+    }),
+    links: graphData.links.filter((link: { [key: string]: unknown }) => {
+      if (!showConnections && !showMyConnections) return true;
+      if (showMyConnections) {
+        return (link as { [key: string]: unknown }).isMyConnection;
+      }
+      return true;
+    })
+  };
 
   // Set d3 charge force via ref
   useEffect(() => {
     if (fgRef.current) {
-      fgRef.current.d3Force('charge').strength(repulsion);
+      fgRef.current.d3Force('charge')?.strength(repulsion);
     }
   }, [repulsion, filteredGraphData]);
 
@@ -165,219 +200,100 @@ const GraphView = forwardRef<any, GraphViewProps>(({ graphData, centerNodeId, on
         <button className="bg-gray-50 text-gray-500 font-semibold px-4 py-1.5 rounded-full shadow-sm hover:bg-gray-100 transition text-xs">More</button>
       </div>
       <ForceGraph2D
-        ref={fgRef}
+        ref={fgRef as React.MutableRefObject<ForceGraphMethods>}
         width={dimensions.width}
         height={dimensions.height}
         graphData={filteredGraphData}
-        nodeCanvasObject={(node, ctx, globalScale) => {
+        nodeCanvasObject={(node: { [key: string]: unknown }, ctx: CanvasRenderingContext2D, globalScale: number) => {
           const x = typeof node.x === "number" ? node.x : 0;
           const y = typeof node.y === "number" ? node.y : 0;
           // Central node larger
           const isCenter = node.id === centerNodeId;
           // Node size adapts to zoom and node count
+          const nodeCount = graphData.nodes.length;
           const baseRadius = isCenter ? 32 : (nodeCount > 30 ? 12 : 16);
           const minRadius = isCenter ? 18 : (nodeCount > 30 ? 7 : 8);
           const maxRadius = isCenter ? 40 : (nodeCount > 30 ? 18 : 24);
           const r = Math.max(minRadius, Math.min(maxRadius, baseRadius / globalScale));
           
-          // Outer semi-transparent circle (glow)
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x, y, r + (isCenter ? 16 : 8), 0, 2 * Math.PI);
-          ctx.fillStyle = isCenter ? 'rgba(56,189,248,0.18)' : getNodeBorderColor(node).replace(')', ', 0.12)').replace('rgb', 'rgba');
-          ctx.filter = isCenter ? 'blur(2px)' : 'none';
-          ctx.fill();
-          ctx.restore();
-          
-          // Shadow
-          ctx.save();
-          ctx.beginPath();
-          ctx.arc(x, y, r + 2, 0, 2 * Math.PI);
-          ctx.shadowColor = isCenter ? '#38bdf8' : '#e0e7ef';
-          ctx.shadowBlur = isCenter ? 24 : 10;
-          ctx.fillStyle = getNodeBackgroundColor(node);
-          ctx.fill();
-          ctx.restore();
-          
-          // Border (gradient or soft shadow for doctors)
+          // Draw node background
           ctx.save();
           ctx.beginPath();
           ctx.arc(x, y, r, 0, 2 * Math.PI);
-          ctx.lineWidth = isCenter ? 4.5 : 3;
-          if (node.type === "doctor") {
-            const grad = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
-            grad.addColorStop(0, "#60A5FA");
-            grad.addColorStop(1, "#38BDF8");
-            ctx.strokeStyle = grad;
-            ctx.shadowColor = "#60A5FA33";
-            ctx.shadowBlur = 8;
-          } else {
-            ctx.strokeStyle = getNodeBorderColor(node) + '80';
-          }
+          ctx.fillStyle = getNodeBackgroundColor(node);
+          ctx.fill();
+          ctx.strokeStyle = getNodeBorderColor(node);
+          ctx.lineWidth = 2;
           ctx.stroke();
           ctx.restore();
           
-          // Avatar or icon
-          drawNodeAvatar(node, ctx, x, y, r - 4);
+          // Draw avatar/icon
+          drawNodeAvatar(node, ctx, x, y, r);
           
-          // Label - only show at reasonable zoom levels
+          // Draw label
           if (globalScale > 0.5) {
             ctx.save();
-            ctx.font = `300 ${11 / globalScale}px Inter, Geist, sans-serif`;
+            ctx.font = `${Math.max(10, 12 / globalScale)}px Inter, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "top";
-            ctx.fillStyle = node.id === centerNodeId ? "#dc2626" : "#222";
-            ctx.globalAlpha = 0.85;
-            ctx.fillText(getNodeLabel(node), x, y + r + 6);
-            ctx.restore();
-          }
-        }}
-        linkCanvasObject={(link, ctx, globalScale) => {
-          // Draw the default link with color and width
-          const start = link.source;
-          const end = link.target;
-          if (
-            !start ||
-            !end ||
-            typeof start !== 'object' ||
-            typeof end !== 'object' ||
-            start === null ||
-            end === null ||
-            typeof start.x !== 'number' ||
-            typeof start.y !== 'number' ||
-            typeof end.x !== 'number' ||
-            typeof end.y !== 'number'
-          ) {
-            return;
-          }
-          const startX = start.x;
-          const startY = start.y;
-          const endX = end.x;
-          const endY = end.y;
-          
-          // Pick color based on relation
-          let color = "#e5e7eb";
-          switch (link.relation) {
-            case "Co-authored paper":
-              color = "#a78bfa"; break;
-            case "Worked together":
-              color = "#34d399"; break;
-            case "Same hospital":
-              color = "#60a5fa"; break;
-            case "Mentor":
-              color = "#fbbf24"; break;
-            case "Author":
-              color = "#6366f1"; break;
-            case "Published in":
-              color = "#cbd5e1"; break;
-            default:
-              color = "#e5e7eb";
-          }
-          
-          // Draw glow effect for better visibility
-          ctx.save();
-          ctx.strokeStyle = color;
-          // Link width increases with zoom
-          const dynamicWidth = Math.max(2, Math.min(8, 3 / Math.max(globalScale, 0.5)));
-          ctx.lineWidth = dynamicWidth * 1.5;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.globalAlpha = 0.28;
-          ctx.shadowColor = color;
-          ctx.shadowBlur = 8;
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-          ctx.restore();
-          
-          // Draw main line
-          ctx.save();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = dynamicWidth;
-          ctx.lineCap = "round";
-          ctx.lineJoin = "round";
-          ctx.globalAlpha = 1;
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
-          ctx.restore();
-          
-          // Draw the label - only at reasonable zoom levels
-          if (link.relation && globalScale > 0.8) {
-            const label = String(link.relation);
-            const midX = (startX + endX) / 2;
-            const midY = (startY + endY) / 2;
-            let angle = Math.atan2(endY - startY, endX - startX);
-            // Ensure text is always upright
-            if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
-              angle += Math.PI;
+            ctx.fillStyle = "#374151";
+            const label = getNodeLabel(node);
+            if (typeof label === 'string') {
+              ctx.fillText(label, x, y + r + 5);
             }
-            ctx.save();
-            ctx.translate(midX, midY);
-            ctx.rotate(angle);
-            ctx.font = `${12 / globalScale}px Sans-Serif`;
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            // Draw background for readability
-            const textWidth = ctx.measureText(label).width;
-            ctx.fillStyle = "rgba(255,255,255,0.95)";
-            ctx.fillRect(-textWidth / 2 - 4, -10 / globalScale, textWidth + 8, 20 / globalScale);
-            // Draw text
-            ctx.fillStyle = "#333";
-            ctx.fillText(label, 0, 0);
             ctx.restore();
           }
         }}
-        linkColor={link => {
-          switch (link.relation) {
-            case "Co-authored paper":
-              return "#a78bfa"; // purple
-            case "Worked together":
-              return "#34d399"; // green
-            case "Same hospital":
-              return "#60a5fa"; // blue
-            case "Mentor":
-              return "#fbbf24"; // orange
-            case "Author":
-              return "#6366f1"; // indigo
-            case "Published in":
-              return "#cbd5e1"; // soft gray
-            default:
-              return "#e5e7eb"; // lighter gray
+        linkCanvasObject={(link: { [key: string]: unknown }, ctx: CanvasRenderingContext2D) => {
+          const source = link.source as { [key: string]: unknown };
+          const target = link.target as { [key: string]: unknown };
+          
+          if (typeof source.x === 'number' && typeof source.y === 'number' && 
+              typeof target.x === 'number' && typeof target.y === 'number') {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(source.x, source.y);
+            ctx.lineTo(target.x, target.y);
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.restore();
           }
         }}
-        linkWidth={1.5}
-        linkCurvature={0.1}
-        nodeRelSize={6}
         onNodeClick={onNodeClick}
-        onNodeHover={(node) => {
-          setHoveredNode(node);
-          onNodeHover(node);
-        }}
+        onNodeHover={onNodeHover}
         onLinkHover={onLinkHover}
-        enableNodeDrag={true}
-        enableZoomInteraction={true}
-        enablePanInteraction={true}
-        d3VelocityDecay={0.4}
-        d3AlphaDecay={0.02}
-        d3AlphaMin={0.001}
+        cooldownTicks={50}
       />
-      {/* Right-side controls */}
-      <div className="absolute top-8 right-8 flex flex-col gap-4 z-30">
-        <button onClick={handleZoomIn} className="bg-white border border-gray-100 shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition">
-          <FiZoomIn className="w-6 h-6 text-blue-600" />
+      
+      {/* Zoom controls */}
+      <div className="absolute bottom-6 right-6 z-30 flex flex-col gap-2">
+        <button
+          onClick={handleZoomIn}
+          className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
+          title="Zoom In"
+        >
+          <FiZoomIn className="w-5 h-5 text-gray-700" />
         </button>
-        <button onClick={handleZoomOut} className="bg-white border border-gray-100 shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition">
-          <FiZoomOut className="w-6 h-6 text-blue-600" />
+        <button
+          onClick={handleZoomOut}
+          className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
+          title="Zoom Out"
+        >
+          <FiZoomOut className="w-5 h-5 text-gray-700" />
         </button>
-        <button onClick={handleFit} className="bg-white border border-gray-100 shadow-lg rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-50 active:scale-95 transition">
-          <FiMaximize2 className="w-6 h-6 text-blue-600" />
+        <button
+          onClick={handleFit}
+          className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-white transition-colors"
+          title="Fit to View"
+        >
+          <FiMaximize2 className="w-5 h-5 text-gray-700" />
         </button>
       </div>
     </div>
   );
 });
+
+GraphView.displayName = 'GraphView';
 
 export default GraphView;

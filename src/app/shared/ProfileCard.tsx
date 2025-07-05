@@ -1,6 +1,17 @@
 import React from "react";
 
-const ProfileCard = ({ doctor }: { doctor: any }) => {
+type Doctor = {
+  id: string;
+  name: string;
+  specialty: string;
+  education: string[];
+  experience: string[];
+  work: string;
+};
+
+type ProfileCardProps = { doctor: Doctor | null };
+
+const ProfileCard = ({ doctor }: ProfileCardProps) => {
   if (!doctor) {
     return (
       <div className="text-gray-400 w-full text-center py-8">

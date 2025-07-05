@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import ProfileCard from "./ProfileCard";
 
 interface DoctorSidebarProps {
-  selectedNode: any | null;
+  selectedNode: { [key: string]: unknown } | null;
 }
 
 const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ selectedNode }) => {
@@ -51,12 +50,16 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ selectedNode }) => {
         <div className="relative z-10 flex flex-col items-center w-full">
           <img
             src={`https://i.pravatar.cc/120?u=doctor-${selectedNode.id}`}
-            alt={selectedNode.name}
+            alt={typeof selectedNode.name === 'string' ? selectedNode.name : ''}
             className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-2xl -mt-10"
             style={{ boxShadow: '0 8px 32px 0 rgba(56, 189, 248, 0.18)' }}
           />
-          <div className="text-lg font-bold text-gray-800 mt-2">{selectedNode.name}</div>
-          <div className="text-xs text-gray-500 mb-2">{selectedNode.specialty}</div>
+          <div className="text-2xl font-bold text-gray-800 mb-1 text-center">
+            {typeof selectedNode.name === 'string' ? selectedNode.name : ''}
+          </div>
+          <div className="text-sm text-blue-500 font-semibold text-center mb-2">
+            {typeof selectedNode.specialty === 'string' ? selectedNode.specialty : ''}
+          </div>
         </div>
       </div>
       {/* Stats in white box */}
@@ -80,7 +83,7 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ selectedNode }) => {
           About
         </div>
         <div className="text-xs text-gray-500 mb-4 font-light leading-6">
-          Experienced and compassionate doctor specializing in {selectedNode.specialty}. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+          Experienced and compassionate doctor specializing in {typeof selectedNode.specialty === 'string' ? selectedNode.specialty : 'N/A'}. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
         </div>
       </div>
       {/* Education Timeline */}
@@ -90,10 +93,10 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ selectedNode }) => {
           Education
         </div>
         <ol className="relative border-l-2 border-blue-100 ml-2">
-          {selectedNode.education && selectedNode.education.map((edu: string, idx: number) => (
-            <li key={idx} className="mb-4 ml-4">
+          {Array.isArray(selectedNode.education) && selectedNode.education.filter(e => typeof e === 'string').map((edu, index) => (
+            <li key={index} className="mb-4 ml-4">
               <div className="absolute -left-3 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-              <div className="text-xs text-gray-700 font-light leading-6">{edu}</div>
+              <div className="text-xs text-gray-700 font-light leading-6">{edu as string}</div>
             </li>
           ))}
         </ol>
@@ -105,10 +108,10 @@ const DoctorSidebar: React.FC<DoctorSidebarProps> = ({ selectedNode }) => {
           Experience
         </div>
         <ol className="relative border-l-2 border-green-100 ml-2">
-          {selectedNode.experience && selectedNode.experience.map((exp: string, idx: number) => (
-            <li key={idx} className="mb-4 ml-4">
+          {Array.isArray(selectedNode.experience) && selectedNode.experience.filter(e => typeof e === 'string').map((exp, index) => (
+            <li key={index} className="mb-4 ml-4">
               <div className="absolute -left-3 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-              <div className="text-xs text-gray-700 font-light leading-6">{exp}</div>
+              <div className="text-xs text-gray-700 font-light leading-6">{exp as string}</div>
             </li>
           ))}
         </ol>
